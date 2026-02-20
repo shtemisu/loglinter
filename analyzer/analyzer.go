@@ -41,7 +41,6 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	inspect.Nodes(nodeTypes, func(n ast.Node, push bool) bool {
-
 		currentFile := pass.Fset.File(n.Pos())
 
 		if lastFile == nil || currentFile != lastFile {
@@ -228,5 +227,11 @@ func applyRules(msg string, call *ast.CallExpr, v validator) {
 	}
 	if !rules.OnlyEnglishAndWithoutSpecChar(msg) {
 		v.Pass.Reportf(call.Pos(), "log-message must be in English language")
+	}
+	if !rules.HasSpecialChars(msg) {
+		v.Pass.Reportf(call.Pos(), "log-message must not include spec chars")
+	}
+	if !rules.HasSensetiveData(msg) {
+		v.Pass.Reportf(call.Pos(), "log-message must not include sensetive data")
 	}
 }

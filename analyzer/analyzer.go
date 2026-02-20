@@ -225,13 +225,13 @@ func applyRules(msg string, call *ast.CallExpr, v validator) {
 	if !rules.IsLower(msg) {
 		v.Pass.Reportf(call.Pos(), "log-message must be start lowercase char")
 	}
-	if !rules.OnlyEnglishAndWithoutSpecChar(msg) {
+	if !rules.OnlyEnglish(msg) {
 		v.Pass.Reportf(call.Pos(), "log-message must be in English language")
 	}
-	if !rules.HasSpecialChars(msg) {
-		v.Pass.Reportf(call.Pos(), "log-message must not include spec chars")
+	if rules.HasSpecialChars(msg) {
+		v.Pass.Reportf(call.Pos(), "log-message must not contains spec chars")
 	}
-	if !rules.HasSensetiveData(msg) {
-		v.Pass.Reportf(call.Pos(), "log-message must not include sensetive data")
+	if rules.HasSensitiveData(msg) {
+		v.Pass.Reportf(call.Pos(), "log-message must not contains sensetive data")
 	}
 }

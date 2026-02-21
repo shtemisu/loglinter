@@ -44,6 +44,12 @@ func OnlyEnglish(s string) bool {
 }
 
 func HasSpecialChars(s string) bool {
+	repeated := []string{"...", "..", "!!!", "!!", "??", "?!"}
+	for _, pattern := range repeated {
+		if strings.Contains(s, pattern) {
+			return true
+		}
+	}
 	for _, r := range s {
 		if unicode.IsLetter(r) ||
 			unicode.IsDigit(r) ||
@@ -56,6 +62,7 @@ func HasSpecialChars(s string) bool {
 			continue
 		}
 		return true
+
 	}
 	return false
 }

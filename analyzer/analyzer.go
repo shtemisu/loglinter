@@ -36,8 +36,6 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 	nodeTypes := []ast.Node{
 		(*ast.CallExpr)(nil),
-		(*ast.FuncDecl)(nil), // добавляем, чтобы отслеживать функции
-		(*ast.FuncLit)(nil),  // и анонимные функции
 	}
 
 	inspect.Nodes(nodeTypes, func(n ast.Node, push bool) bool {
@@ -49,21 +47,8 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		if push {
-			switch node := n.(type) {
-			case *ast.FuncDecl:
-				v.Stack.Push(node.Name.Name)
-			case *ast.FuncLit:
-				v.Stack.Push("anonymous")
-			case *ast.CallExpr:
-				v.checkCallLogSnap(node)
-				v.checkCallZap(node)
-				//	ast.Print(pass.Fset, n)
-			}
-		} else {
-			switch n.(type) {
-			case *ast.FuncDecl, *ast.FuncLit:
-				v.Stack.Pop()
-			}
+			v.checkCallLogSnap(n.(*ast.CallExpr))
+			v.checkCallZap(n.(*ast.CallExpr))
 		}
 		return true
 	})

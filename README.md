@@ -24,3 +24,19 @@ or extended output
 ```
 make test_rules_extend
 ```
+
+## Quick start
+for a separate linter:
+```
+make build
+```
+and
+```
+./loglinter ./path/to/your/go_file.go
+```
+for module plugin system:
+
+```
+golangci-lint custom -v
+./custom-gcl run -c .golangci.yml ./path/to/your/go_file.go
+``` 

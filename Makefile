@@ -1,41 +1,23 @@
-BINARY_PATH = ./bin/loglinter
-PLUGIN_PATH = ./bin/loglinter.so
+.PHONY: build plugin test_rules test_rules_extend
 
-.PHONY: build build_bin build_plugin test_rules test_rules_expand lint
+build:
+	go build -o loglinter cmd/main.go 
 
-build: build_bin build_plugin
-
-build_bin:
-	mkdir -p ./bin
-	CGO_ENABLED=0 go build -o $(BINARY_PATH) ./cmd/main.go
-	chmod +x $(BINARY_PATH)
-
-build_plugin:
-	mkdir -p ./bin
-	CGO_ENABLED=1 go build -buildmode=plugin -o $(PLUGIN_PATH) ./cmd/plugin/plugin.go
+plugin:
+	@golangci-lint custom -v
 
 test_rules:
-	go test ./internal/rules
+	@go test ./internal/rules
 
-test_rules_expand:
-	go test -v ./internal/rules
+test_rules_extend:
+	@go test -v ./internal/rules
 
-lint: build_plugin
-	golangci-lint run --config .golangci.yml ./analyzer/testdata/...
+rebuild_plugin: clean	
 
-lint-bin: build_bin
-	$(BINARY_PATH) ./analyzer/testdata/...
+clean_plugin:
+	@rm custom-gcl
 
-clean:
-	rm -f $(BINARY_PATH) $(PLUGIN_PATH)
-	go clean -testcache
+clean_exe:
+	@rm loglinter
 
-help:
-	@echo "Available targets:"
-	@echo "  build          - build binary and plugin"
-	@echo "  build_bin      - build binary only"
-	@echo "  build_plugin   - build plugin only"
-	@echo "  test_rules     - run rules tests"
-	@echo "  lint           - run linter with golangci-lint"
-	@echo "  lint-bin       - run binary directly"
-	@echo "  clean          - remove built files"
+clean all: clean_plugin clean_exe

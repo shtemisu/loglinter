@@ -40,3 +40,8 @@ for module plugin system:
 golangci-lint custom -v
 ./custom-gcl run -c .golangci.yml ./path/to/your/go_file.go
 ``` 
+
+### Plugin test
+```
+make test_plugin
+```

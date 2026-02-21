@@ -12,6 +12,13 @@ test_rules:
 test_rules_extend:
 	@go test -v ./internal/rules
 
+test_plugin:
+	@./custom-gcl run -c .golangci.yml ./analyzer/testdata/russian.go
+	@./custom-gcl run -c .golangci.yml ./analyzer/testdata/only_english.go
+	@./custom-gcl run -c .golangci.yml ./analyzer/testdata/sensetive_data.go
+	@./custom-gcl run -c .golangci.yml ./analyzer/testdata/specchars.go
+	@./custom-gcl run -c .golangci.yml ./analyzer/testdata/testZap.go
+
 rebuild_plugin: clean	
 
 clean_plugin:

@@ -1,0 +1,11 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - loglinter
+  settings:
+    custom:
+      loglinter:
+        type: binary
+        path: ./bin/loglinter
+        description: Custom linter for log messages

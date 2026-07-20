@@ -273,6 +273,11 @@ func TestHasSensitiveData(t *testing.T) {
 			input:    "",
 			expected: false,
 		},
+		{
+			name:     "auth внутри author",
+			input:    "author",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {

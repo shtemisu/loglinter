@@ -55,6 +55,75 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
+func (v *validator) extractMessage(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.BasicLit:
+		if e.Kind != token.STRING {
+			return ""
+		}
+		return strings.Trim(e.Value, "\"`")
+	case *ast.Ident:
+		v.checkValueIdent(e)
+	case *ast.CallExpr:
+		call, ok := expr.(*ast.CallExpr)
+		if !ok {
+			return ""
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return ""
+		}
+		pkg, ok := sel.X.(*ast.Ident)
+		if !ok || pkg.Name != "errors" || sel.Sel.Name != "New" {
+			return ""
+		}
+		if len(call.Args) == 0 {
+			return ""
+		}
+		lit, ok := call.Args[0].(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			return ""
+		}
+
+		return v.extractMessage(call.Args[0])
+	case *ast.BinaryExpr:
+		if e.Op == token.ADD {
+			return v.extractMessage(e.X) + v.extractMessage(e.Y)
+		}
+	}
+	return ""
+}
+
+// func checkCallError(expr ast.Expr) string {
+
+// 	call, ok := expr.(*ast.CallExpr)
+// 	if !ok {
+// 		return ""
+// 	}
+// 	sel, ok := call.Fun.(*ast.SelectorExpr)
+// 	if !ok {
+// 		return ""
+// 	}
+// 	pkg, ok := sel.X.(*ast.Ident)
+// 	if !ok || pkg.Name != "errors" {
+// 		return ""
+// 	}
+// 	if sel.Sel.Name != "New" {
+// 		return ""
+// 	}
+
+// 	if len(call.Args) == 0 {
+// 		return ""
+// 	}
+
+// 	lit, ok := call.Args[0].(*ast.BasicLit)
+// 	if !ok || lit.Kind != token.STRING {
+// 		return ""
+// 	}
+
+// 	return strings.Trim(lit.Value, "\"`")
+// }
+
 func (v *validator) checkCallLogSnap(call *ast.CallExpr) {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
@@ -102,7 +171,7 @@ func (v *validator) checkCallZap(call *ast.CallExpr) {
 	var msg string
 	switch arg := firstArg.(type) {
 	case *ast.CallExpr:
-		msg = checkCallError(arg)
+		msg = v.extractMessage(arg)
 
 	case *ast.Ident:
 		msg = v.checkValueIdent(arg)
@@ -116,36 +185,6 @@ func (v *validator) checkCallZap(call *ast.CallExpr) {
 	if msg != "" {
 		applyRules(msg, call, *v)
 	}
-}
-
-func checkCallError(expr ast.Expr) string {
-
-	call, ok := expr.(*ast.CallExpr)
-	if !ok {
-		return ""
-	}
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
-		return ""
-	}
-	pkg, ok := sel.X.(*ast.Ident)
-	if !ok || pkg.Name != "errors" {
-		return ""
-	}
-	if sel.Sel.Name != "New" {
-		return ""
-	}
-
-	if len(call.Args) == 0 {
-		return ""
-	}
-
-	lit, ok := call.Args[0].(*ast.BasicLit)
-	if !ok || lit.Kind != token.STRING {
-		return ""
-	}
-
-	return strings.Trim(lit.Value, "\"`")
 }
 
 func (v *validator) checkValueIdent(ident *ast.Ident) string {
@@ -172,7 +211,7 @@ func (v *validator) checkValueIdent(ident *ast.Ident) string {
 						continue
 					}
 					if i < len(node.Rhs) {
-						if msg := checkCallError(node.Rhs[i]); msg != "" {
+						if msg := v.extractMessage(node.Rhs[i]); msg != "" {
 							result = msg
 							found = true
 							return false
@@ -187,7 +226,7 @@ func (v *validator) checkValueIdent(ident *ast.Ident) string {
 					}
 
 					if i < len(node.Values) {
-						if msg := checkCallError(node.Values[i]); msg != "" {
+						if msg := v.extractMessage(node.Values[i]); msg != "" {
 							result = msg
 							found = true
 							return false

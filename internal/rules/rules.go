@@ -28,7 +28,7 @@ var properNames = []string{
 }
 
 // allowedSpecChars — символы, кроме букв и цифр, разрешённые в сообщении.
-var allowedSpecChars = []rune{' ', ':', '\'', '.', ',', '[', ']'}
+var allowedSpecChars = []rune{' ', ':', '\'', '.', ',', '[', ']', '%'}
 
 // HasSensitiveData reports whether s contains a sensitive keyword as a whole word.
 // Words are runs of letters and digits; comparison is case-insensitive.

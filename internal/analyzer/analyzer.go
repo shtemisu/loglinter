@@ -3,7 +3,7 @@ package analyzer
 import (
 	"go/ast"
 	"go/token"
-	"strings"
+	"strconv"
 
 	"github.com/shtemisu/loglinter/internal/rules"
 	"github.com/shtemisu/loglinter/internal/stack"
@@ -15,6 +15,17 @@ import (
 type validator struct {
 	Pass  *analysis.Pass
 	Stack *stack.Stack[string]
+}
+
+func unquoting(l *ast.BasicLit) string {
+	if l.Kind == token.STRING {
+		s, err := strconv.Unquote(l.Value)
+		if err != nil {
+			return ""
+		}
+		return s
+	}
+	return ""
 }
 
 func New() *analysis.Analyzer {
@@ -68,7 +79,7 @@ func (v *validator) checkCallLogSnap(call *ast.CallExpr) {
 		if !ok || lit.Kind != token.STRING {
 			return
 		}
-		msg := strings.Trim(lit.Value, "\"`")
+		msg := unquoting(lit)
 		applyRules(msg, call, *v)
 	}
 }
@@ -109,7 +120,7 @@ func (v *validator) checkCallZap(call *ast.CallExpr) {
 
 	case *ast.BasicLit:
 		if arg.Kind == token.STRING {
-			msg = strings.Trim(arg.Value, "\"`")
+			msg = unquoting(arg)
 		}
 	}
 
@@ -144,8 +155,7 @@ func checkCallError(expr ast.Expr) string {
 	if !ok || lit.Kind != token.STRING {
 		return ""
 	}
-
-	return strings.Trim(lit.Value, "\"`")
+	return unquoting(lit)
 }
 
 func (v *validator) checkValueIdent(ident *ast.Ident) string {

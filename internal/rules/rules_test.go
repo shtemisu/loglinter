@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+// Тесты повторяют примеры из RULES.md.
+
 func TestIsLower(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -12,38 +14,79 @@ func TestIsLower(t *testing.T) {
 	}{
 		{
 			name:     "все строчные",
-			input:    "starting server",
-			expected: true,
-		},
-		{
-			name:     "с заглавной буквы",
-			input:    "Starting server",
-			expected: false,
-		},
-		{
-			name:     "все заглавные",
-			input:    "STARTING SERVER",
-			expected: false,
-		},
-		{
-			name:     "пустая строка",
-			input:    "",
-			expected: true,
-		},
-		{
-			name:     "с цифрами",
-			input:    "server 123",
+			input:    "server started",
 			expected: true,
 		},
 		{
 			name:     "с цифрами в начале",
-			input:    "123 server",
+			input:    "8080 port busy",
 			expected: true,
+		},
+		{
+			name:     "аббревиатура",
+			input:    "HTTP request failed",
+			expected: true,
+		},
+		{
+			name:     "аббревиатура с цифрой",
+			input:    "S3 upload failed",
+			expected: true,
+		},
+		{
+			name:     "аббревиатура без продолжения",
+			input:    "HTTP",
+			expected: true,
+		},
+		{
+			name:     "аббревиатура с двоеточием",
+			input:    "HTTP: request failed",
+			expected: true,
+		},
+		{
+			name:     "имя собственное из списка",
+			input:    "Redis connection lost",
+			expected: true,
+		},
+		{
+			name:     "имя собственное с двоеточием",
+			input:    "PostgreSQL: query failed",
+			expected: true,
+		},
+		{
+			name:     "пустая строка не проверяется",
+			input:    "",
+			expected: true,
+		},
+		{
+			name:     "с заглавной буквы",
+			input:    "Server started",
+			expected: false,
+		},
+		{
+			name:     "одно слово с заглавной",
+			input:    "Error",
+			expected: false,
+		},
+		{
+			name:     "одна заглавная буква не аббревиатура",
+			input:    "A request failed",
+			expected: false,
+		},
+		{
+			name:     "слово не целиком заглавное",
+			input:    "HTTPServer started",
+			expected: false,
+		},
+		{
+			name:     "кириллица с заглавной",
+			input:    "Ошибка",
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := IsLower(tt.input); got != tt.expected {
 				t.Errorf("IsLower(%q) = %v, want %v", tt.input, got, tt.expected)
 			}
@@ -59,38 +102,23 @@ func TestOnlyEnglish(t *testing.T) {
 	}{
 		{
 			name:     "только английский",
-			input:    "starting server",
-			expected: true,
-		},
-		{
-			name:     "с заглавными буквами",
-			input:    "Starting Server",
+			input:    "server started",
 			expected: true,
 		},
 		{
 			name:     "с цифрами",
-			input:    "server 123",
+			input:    "port 8080",
 			expected: true,
 		},
 		{
-			name:     "с пунктуацией",
-			input:    "server, please start!",
-			expected: false,
+			name:     "пунктуация и эмодзи не проверяются",
+			input:    "server started!🚀",
+			expected: true,
 		},
 		{
-			name:     "с русскими буквами",
-			input:    "starting сервер",
-			expected: false,
-		},
-		{
-			name:     "только русские",
-			input:    "запуск сервера",
-			expected: false,
-		},
-		{
-			name:     "смешанный",
-			input:    "server запуск",
-			expected: false,
+			name:     "спецсимволы не проверяются",
+			input:    "user_id: {value} 100%",
+			expected: true,
 		},
 		{
 			name:     "пустая строка",
@@ -98,9 +126,19 @@ func TestOnlyEnglish(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "только пробелы",
-			input:    "   ",
-			expected: true,
+			name:     "только русские",
+			input:    "ошибка подключения",
+			expected: false,
+		},
+		{
+			name:     "смешанный",
+			input:    "server запущен",
+			expected: false,
+		},
+		{
+			name:     "другая письменность",
+			input:    "server 起動",
+			expected: false,
 		},
 	}
 
@@ -122,78 +160,93 @@ func TestHasSpecialChars(t *testing.T) {
 	}{
 		{
 			name:     "чистый текст",
-			input:    "starting server",
-			expected: false,
-		},
-		{
-			name:     "с точкой в конце",
-			input:    "starting server.",
-			expected: false,
-		},
-		{
-			name:     "с запятой",
-			input:    "server, please start",
-			expected: false,
-		},
-		{
-			name:     "с дефисом",
-			input:    "server-start",
+			input:    "server started",
 			expected: false,
 		},
 		{
 			name:     "с двоеточием",
-			input:    "server: starting",
-			expected: true,
+			input:    "failed to connect: timeout",
+			expected: false,
 		},
 		{
 			name:     "с апострофом",
-			input:    "don't start",
+			input:    "can't connect",
 			expected: false,
 		},
 		{
-			name:     "с восклицательным знаком",
-			input:    "starting server!",
-			expected: true,
+			name:     "с одной точкой",
+			input:    "failed to read config.yaml",
+			expected: false,
 		},
 		{
-			name:     "с двумя восклицательными",
-			input:    "starting server!!",
-			expected: true,
+			name:     "с запятой",
+			input:    "retry 3, giving up",
+			expected: false,
 		},
 		{
-			name:     "с вопросительным знаком",
-			input:    "starting server?",
-			expected: true,
-		},
-		{
-			name:     "с многоточием",
-			input:    "starting server...",
-			expected: true,
-		},
-		{
-			name:     "со звёздочкой",
-			input:    "starting *server*",
-			expected: true,
-		},
-		{
-			name:     "с символом @",
-			input:    "user@server",
-			expected: true,
-		},
-		{
-			name:     "с эмодзи",
-			input:    "starting server 😀",
-			expected: true,
+			name:     "с квадратными скобками",
+			input:    "[worker] started",
+			expected: false,
 		},
 		{
 			name:     "с цифрами",
-			input:    "server 123",
+			input:    "port 8080",
 			expected: false,
 		},
 		{
-			name:     "с русскими буквами",
-			input:    "starting сервер",
+			name:     "кириллица не проверяется",
+			input:    "сервер запущен",
 			expected: false,
+		},
+		{
+			name:     "пустая строка",
+			input:    "",
+			expected: false,
+		},
+		{
+			name:     "две точки",
+			input:    "loading..",
+			expected: true,
+		},
+		{
+			name:     "многоточие",
+			input:    "something went wrong...",
+			expected: true,
+		},
+		{
+			name:     "восклицательный знак",
+			input:    "connection failed!",
+			expected: true,
+		},
+		{
+			name:     "вопросительный знак",
+			input:    "connection failed?",
+			expected: true,
+		},
+		{
+			name:     "подчёркивание",
+			input:    "user_id not found",
+			expected: true,
+		},
+		{
+			name:     "дефис",
+			input:    "non-empty value",
+			expected: true,
+		},
+		{
+			name:     "фигурные скобки",
+			input:    "value {id}",
+			expected: true,
+		},
+		{
+			name:     "слэш",
+			input:    "path a/b",
+			expected: true,
+		},
+		{
+			name:     "эмодзи",
+			input:    "server started🚀",
+			expected: true,
 		},
 	}
 
@@ -219,43 +272,38 @@ func TestHasSensitiveData(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "password в тексте",
-			input:    "user password changed",
-			expected: true,
-		},
-		{
-			name:     "pwd в тексте",
-			input:    "invalid pwd",
-			expected: true,
-		},
-		{
-			name:     "token в тексте",
-			input:    "token expired",
-			expected: true,
-		},
-		{
-			name:     "jwt в тексте",
-			input:    "jwt validation failed",
-			expected: true,
-		},
-		{
-			name:     "api_key в тексте",
-			input:    "api_key=12345",
-			expected: true,
-		},
-		{
-			name:     "secret в тексте",
-			input:    "secret key",
-			expected: true,
+			name:     "pass внутри слова",
+			input:    "operation passed",
+			expected: false,
 		},
 		{
 			name:     "auth внутри слова",
-			input:    "authorization failed",
-			expected: true,
+			input:    "author not found",
+			expected: false,
+		},
+		{
+			name:     "пустая строка",
+			input:    "",
+			expected: false,
 		},
 		{
 			name:     "auth отдельно",
 			input:    "auth failed",
+			expected: true,
+		},
+		{
+			name:     "слово в конце",
+			input:    "invalid pwd",
+			expected: true,
+		},
+		{
+			name:     "единственное слово",
+			input:    "password",
+			expected: true,
+		},
+		{
+			name:     "через подчёркивание",
+			input:    "user_password",
 			expected: true,
 		},
 		{
@@ -264,14 +312,24 @@ func TestHasSensitiveData(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "несколько слов",
-			input:    "invalid authorization token",
+			name:     "api_key через подчёркивание",
+			input:    "api_key=12345",
 			expected: true,
 		},
 		{
-			name:     "пустая строка",
-			input:    "",
-			expected: false,
+			name:     "api-key через дефис",
+			input:    "invalid api-key",
+			expected: true,
+		},
+		{
+			name:     "apikey слитно",
+			input:    "apikey expired",
+			expected: true,
+		},
+		{
+			name:     "token с двоеточием",
+			input:    "token: ",
+			expected: true,
 		},
 	}
 

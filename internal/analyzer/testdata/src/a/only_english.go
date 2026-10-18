@@ -12,4 +12,6 @@ func testEnglish() {
 	log.Println("failed to fetch data")
 	log.Printf("failed to fetch data: %w", err)
 	log.Fatalf("failed to connect server: %s", port)
+	log.Print("disk usage 100%")
+	log.Printf("value %-5d", 42)
 }

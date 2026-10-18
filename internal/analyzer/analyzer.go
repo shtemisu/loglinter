@@ -3,7 +3,9 @@ package analyzer
 import (
 	"go/ast"
 	"go/token"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/shtemisu/loglinter/internal/rules"
 	"github.com/shtemisu/loglinter/internal/stack"
@@ -11,6 +13,17 @@ import (
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
+
+var percentFormatRe = regexp.MustCompile(`%%|%[+\-# 0]*\d*(?:\.\d*)?[a-zA-Z]`)
+
+func stripFormatVerbs(s string) string {
+	return percentFormatRe.ReplaceAllStringFunc(s, func(m string) string {
+		if m == "%%" {
+			return "%"
+		}
+		return ""
+	})
+}
 
 type validator struct {
 	Pass  *analysis.Pass
@@ -37,6 +50,39 @@ func New() *analysis.Analyzer {
 	}
 }
 
+func isFormatFunction(name string) bool {
+	return strings.HasSuffix(name, "f")
+}
+
+func getMethodName(c *ast.CallExpr) string {
+	sel, ok := c.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return ""
+	}
+	return sel.Sel.Name
+}
+
+func getPackageName(c *ast.CallExpr) string {
+	sel, ok := c.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return ""
+	}
+	if x, ok := sel.X.(*ast.Ident); ok {
+		return x.Name
+	}
+	return ""
+}
+
+func (v *validator) checkLogMessage(n string, c *ast.CallExpr) {
+	switch n {
+	case "log", "slog":
+		v.checkCallLogSnap(c)
+	case "zap":
+		v.checkCallZap(c)
+	default:
+	}
+}
+
 func run(pass *analysis.Pass) (any, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
@@ -56,10 +102,9 @@ func run(pass *analysis.Pass) (any, error) {
 			v.Stack.Clear()
 			lastFile = currentFile
 		}
-
+		packageName := getPackageName(n.(*ast.CallExpr))
 		if push {
-			v.checkCallLogSnap(n.(*ast.CallExpr))
-			v.checkCallZap(n.(*ast.CallExpr))
+			v.checkLogMessage(packageName, n.(*ast.CallExpr))
 		}
 		return true
 	})
@@ -67,21 +112,20 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 func (v *validator) checkCallLogSnap(call *ast.CallExpr) {
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
+	if len(call.Args) == 0 {
 		return
 	}
-	if x, ok := sel.X.(*ast.Ident); ok && (x.Name == "log" || x.Name == "slog") {
-		if len(call.Args) == 0 {
-			return
-		}
-		lit, ok := call.Args[0].(*ast.BasicLit)
-		if !ok || lit.Kind != token.STRING {
-			return
-		}
-		msg := unquoting(lit)
-		applyRules(msg, call, *v)
+	lit, ok := call.Args[0].(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return
 	}
+	msg := unquoting(lit)
+	methodName := getMethodName(call)
+	format := isFormatFunction(methodName)
+	if format {
+		msg = stripFormatVerbs(msg)
+	}
+	applyRules(msg, call, *v)
 }
 
 func (v *validator) checkCallZap(call *ast.CallExpr) {
@@ -90,10 +134,6 @@ func (v *validator) checkCallZap(call *ast.CallExpr) {
 		return
 	}
 
-	x, ok := sel.X.(*ast.Ident)
-	if !ok || x.Name != "zap" {
-		return
-	}
 	methodName := sel.Sel.Name
 
 	logMethods := map[string]bool{

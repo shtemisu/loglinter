@@ -49,7 +49,7 @@ func splitWords(s string) []string {
 }
 
 func containsSequence(words, sequence []string) bool {
-	for i := 0; i+len(sequence) <= len(words); i++ {
+	for i := 0; i <= len(words)-len(sequence); i++ {
 		if slices.Equal(words[i:i+len(sequence)], sequence) {
 			return true
 		}

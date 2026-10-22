@@ -3,6 +3,7 @@ package analyzer
 import (
 	"go/ast"
 	"go/token"
+	"go/types"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 var percentFormatRe = regexp.MustCompile(`%%|%[+\-# 0]*\d*(?:\.\d*)?[a-zA-Z]`)
@@ -73,12 +75,12 @@ func getPackageName(c *ast.CallExpr) string {
 	return ""
 }
 
-func (v *validator) checkLogMessage(n string, c *ast.CallExpr) {
+func (v *validator) checkLogMessage(n string, c *ast.CallExpr, val int) {
 	switch n {
 	case "log", "slog":
-		v.checkCallLogSnap(c)
+		v.checkCallLogSnap(c, val)
 	case "zap":
-		v.checkCallZap(c)
+		v.checkCallZap(c, val)
 	default:
 	}
 }
@@ -102,20 +104,29 @@ func run(pass *analysis.Pass) (any, error) {
 			v.Stack.Clear()
 			lastFile = currentFile
 		}
-		packageName := getPackageName(n.(*ast.CallExpr))
-		if push {
-			v.checkLogMessage(packageName, n.(*ast.CallExpr))
+
+		fnObject := typeutil.Callee(pass.TypesInfo, n.(*ast.CallExpr))
+		funcTarget, ok := fnObject.(*types.Func)
+		if !ok {
+			return true
 		}
+		val, ok := messageArgIndex[funcTarget.FullName()]
+		if ok {
+			if push {
+				v.checkCallLogSnap(n.(*ast.CallExpr), val)
+			}
+		}
+
 		return true
 	})
 	return nil, nil
 }
 
-func (v *validator) checkCallLogSnap(call *ast.CallExpr) {
-	if len(call.Args) == 0 {
+func (v *validator) checkCallLogSnap(call *ast.CallExpr, index int) {
+	if len(call.Args) <= index {
 		return
 	}
-	lit, ok := call.Args[0].(*ast.BasicLit)
+	lit, ok := call.Args[index].(*ast.BasicLit)
 	if !ok || lit.Kind != token.STRING {
 		return
 	}
@@ -128,7 +139,7 @@ func (v *validator) checkCallLogSnap(call *ast.CallExpr) {
 	applyRules(msg, call, *v)
 }
 
-func (v *validator) checkCallZap(call *ast.CallExpr) {
+func (v *validator) checkCallZap(call *ast.CallExpr, index int) {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return
@@ -149,9 +160,9 @@ func (v *validator) checkCallZap(call *ast.CallExpr) {
 	if len(call.Args) == 0 {
 		return
 	}
-	firstArg := call.Args[0]
+	logArg := call.Args[index]
 	var msg string
-	switch arg := firstArg.(type) {
+	switch arg := logArg.(type) {
 	case *ast.CallExpr:
 		msg = checkCallError(arg)
 

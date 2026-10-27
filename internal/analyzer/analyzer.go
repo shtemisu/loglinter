@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/shtemisu/loglinter/internal/rules"
-	"github.com/shtemisu/loglinter/internal/stack"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -29,8 +28,7 @@ func stripFormatVerbs(s string) string {
 }
 
 type validator struct {
-	Pass  *analysis.Pass
-	Stack *stack.Stack[string]
+	Pass *analysis.Pass
 }
 
 func unquoting(l *ast.BasicLit) string {
@@ -68,22 +66,14 @@ func getMethodName(c *ast.CallExpr) string {
 func run(pass *analysis.Pass) (any, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
-	var lastFile *token.File
 	v := validator{
-		Pass:  pass,
-		Stack: stack.NewStack[string](),
+		Pass: pass,
 	}
 	nodeTypes := []ast.Node{
 		(*ast.CallExpr)(nil),
 	}
 
 	inspect.Nodes(nodeTypes, func(n ast.Node, push bool) bool {
-		currentFile := pass.Fset.File(n.Pos())
-
-		if lastFile == nil || currentFile != lastFile {
-			v.Stack.Clear()
-			lastFile = currentFile
-		}
 
 		fnObject := typeutil.Callee(pass.TypesInfo, n.(*ast.CallExpr))
 		funcTarget, ok := fnObject.(*types.Func)

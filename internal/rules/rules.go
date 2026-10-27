@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -43,7 +44,12 @@ func HasSensitiveData(s string) bool {
 }
 
 func splitWords(s string) []string {
-	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+
+	var camelRegex = regexp.MustCompile(`([a-z0-9])([A-Z])`)
+
+	spaced := camelRegex.ReplaceAllString(s, `${1} ${2}`)
+
+	return strings.FieldsFunc(strings.ToLower(spaced), func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
 }

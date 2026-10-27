@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -63,6 +62,23 @@ func getMethodName(c *ast.CallExpr) string {
 	return sel.Sel.Name
 }
 
+func hasSensetiveArgs(c *ast.CallExpr, index int) bool {
+	for i, exp := range c.Args {
+		if i == index {
+			continue
+		}
+		ident, ok := exp.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		has := rules.HasSensitiveData(ident.Name)
+		if has {
+			return true
+		}
+	}
+	return false
+}
+
 func run(pass *analysis.Pass) (any, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
@@ -81,8 +97,6 @@ func run(pass *analysis.Pass) (any, error) {
 		if !ok {
 			return true
 		}
-
-		fmt.Println(funcTarget.FullName())
 		val, ok := messageArgIndex[funcTarget.FullName()]
 		if ok {
 			if push {
@@ -103,16 +117,17 @@ func (v *validator) checkCallLogSnap(call *ast.CallExpr, index int) {
 	if !ok || lit.Kind != token.STRING {
 		return
 	}
+
 	msg := unquoting(lit)
 	methodName := getMethodName(call)
-	format := isFormatFunction(methodName)
-	if format {
+
+	if isFormatFunction(methodName) {
 		msg = stripFormatVerbs(msg)
 	}
-	applyRules(msg, call, *v)
+	applyRules(msg, call, *v, index)
 }
 
-func applyRules(msg string, call *ast.CallExpr, v validator) {
+func applyRules(msg string, call *ast.CallExpr, v validator, index int) {
 	if !rules.IsLower(msg) {
 		v.Pass.Reportf(call.Pos(), "log-message must be start lowercase char")
 	}
@@ -122,7 +137,7 @@ func applyRules(msg string, call *ast.CallExpr, v validator) {
 	if rules.HasSpecialChars(msg) {
 		v.Pass.Reportf(call.Pos(), "log-message must not contains spec chars")
 	}
-	if rules.HasSensitiveData(msg) {
+	if rules.HasSensitiveData(msg) || hasSensetiveArgs(call, index) {
 		v.Pass.Reportf(call.Pos(), "log-message must not contains sensetive data")
 	}
 }

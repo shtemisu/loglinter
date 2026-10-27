@@ -49,4 +49,13 @@ var messageArgIndex = map[string]int{
 	"(*log/slog.Logger).ErrorContext": 1,
 	"(*log/slog.Logger).Log":          2,
 	"(*log/slog.Logger).LogAttrs":     2,
+
+	"(*go.uber.org/zap.Logger).Info":         0,
+	"(*go.uber.org/zap.Logger).Error":        0,
+	"(*go.uber.org/zap.Logger).Debug":        0,
+	"(*go.uber.org/zap.Logger).Warn":         0,
+	"(*go.uber.org/zap.Logger).DPanic":       0,
+	"(*go.uber.org/zap.Logger).Fatal":        0,
+	"(*go.uber.org/zap.SugaredLogger).Infof": 0,
+	"(*go.uber.org/zap.SugaredLogger).Infow": 0,
 }
